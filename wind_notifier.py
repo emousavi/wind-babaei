@@ -82,45 +82,48 @@ def fetch_forecast():
 # =========================
 def analyze_flight(speed: float, gust: float, deg: float) -> str:
     """تحلیل فارسی شرایط پرواز با اعداد"""
+    # تبدیل سرعت از متر بر ثانیه به کیلومتر بر ساعت
+    speed_kmh = speed * 3.6
+    gust_kmh = gust * 3.6
+    
     d = normalize_deg(deg)
     direction_fa = deg_to_direction(d)
     dir_ok = in_dir_range(d, GOOD_DIR_MIN, GOOD_DIR_MAX)
-    gust_diff = gust - speed
+    gust_diff = gust_kmh - speed_kmh
 
     if not dir_ok:
-        return f"🚫 باد از سمت {direction_fa} ({int(d)}°) نامناسب برای پرواز است. 🌬 سرعت {speed:.1f}، گاست {gust:.1f}"
-    if MIN_OK <= speed <= MAX_OK and gust_diff <= 2:
-        return f"✅ باد از سمت {direction_fa} ({int(d)}°) مناسب برای پرواز است. 🌬 سرعت {speed:.1f}، گاست {gust:.1f}"
-    if MAX_OK < speed <= MAX_CAUTION and gust_diff <= 3:
-        return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) قابل پرواز ولی با احتیاط. 🌬 سرعت {speed:.1f}، گاست {gust:.1f}"
+        return f"🚫 باد از سمت {direction_fa} ({int(d)}°) نامناسب برای پرواز است. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
+    if MIN_OK <= speed_kmh <= MAX_OK and gust_diff <= 2:
+        return f"✅ باد از سمت {direction_fa} ({int(d)}°) مناسب برای پرواز است. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
+    if MAX_OK < speed_kmh <= MAX_CAUTION and gust_diff <= 3:
+        return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) قابل پرواز ولی با احتیاط. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
     if gust_diff > 2:
-        return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) دارای تلاطم (گاست زیاد) است. 🌬 سرعت {speed:.1f}، گاست {gust:.1f}"
-    if speed < MIN_OK:
-        return f"❌ باد از سمت {direction_fa} ({int(d)}°) بسیار ضعیف است. 🌬 سرعت {speed:.1f}"
-    if speed > MAX_CAUTION:
-        return f"🚫 باد از سمت {direction_fa} ({int(d)}°) بسیار شدید و خطرناک است. 🌬 سرعت {speed:.1f}"
-    return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) شرایط مرزی دارد. 🌬 سرعت {speed:.1f}، گاست {gust:.1f}"
+        return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) دارای تلاطم (گاست زیاد) است. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
+    if speed_kmh < MIN_OK:
+        return f"❌ باد از سمت {direction_fa} ({int(d)}°) بسیار ضعیف است. 🌬 سرعت {speed_kmh:.1f} km/h"
+    if speed_kmh > MAX_CAUTION:
+        return f"🚫 باد از سمت {direction_fa} ({int(d)}°) بسیار شدید و خطرناک است. 🌬 سرعت {speed_kmh:.1f} km/h"
+    return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) شرایط مرزی دارد. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
 
 # =========================
 # 🧾 ساخت گزارش یک‌روزه
 # =========================
 def build_report():
-    """ایجاد گزارش برای روز جاری"""
+    """ایجاد گزارش برای سه روز آینده"""
     data = fetch_forecast()
     now_teh = tehran_now()
     today = now_teh.date()
 
     lines = []
-    target_date = today
-    lines.append(f"\n🪂 گزارش باد – سایت پروازی شهید بابایی قم")
+    lines.append(f"🪂 گزارش باد – سایت پروازی شهید بابایی قم")
 
-    lines.append(f"\n📅 {to_persian_date(target_date)}")
+    lines.append(f"\n📅 {to_persian_date(today)}")
 
     found = False
     for item in data["list"]:
         t_txt = item["dt_txt"]
         t_teh = from_txt_to_tehran(t_txt)
-        if t_teh.date() != target_date:
+        if t_teh.date() != today:
             continue
         if not (FLY_START_HOUR <= t_teh.hour <= FLY_END_HOUR):
             continue
@@ -176,4 +179,3 @@ def main(run_anyway=False):
 if __name__ == "__main__":
    # main(run_anyway=True)
     main()
-
