@@ -1,0 +1,30 @@
+name: Daily Wind Report
+
+on:
+  schedule:
+    # اجرای روزانه ساعت 07:30 UTC = 11:00 تهران
+    - cron: "30 7 * * *"
+  workflow_dispatch:  # اجرا دستی در صورت نیاز
+
+jobs:
+  send_wind_report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install requests python-dotenv jdatetime
+
+      - name: Run wind notifier
+        env:
+          OWM_API_KEY: ${{ secrets.OWM_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python wind_notifier.py
