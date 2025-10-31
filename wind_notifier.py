@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # ⚙️ تنظیمات کلی
 # =========================
 LAT, LON = 34.5858, 50.9066          # قم - سایت پروازی شهید بابایی
-FLY_START_HOUR = 15                   # از ساعت 15 تا 18 تهران
+FLY_START_HOUR = 15                   # بازه بررسی از ساعت 15 تا 18 تهران
 FLY_END_HOUR = 18
 
 # ✅ جهت مطلوب: از شرق‌شمال‌شرقی تا جنوب‌شرقی (۷۰° تا ۱۳۰°)
@@ -20,7 +20,9 @@ MIN_OK = 3.0
 MAX_OK = 6.0
 MAX_CAUTION = 8.0
 
-# بارگذاری متغیرها از فایل .env
+# --------------------
+# بارگذاری متغیرها از .env
+# --------------------
 load_dotenv()
 OWM_API_KEY = os.getenv("OWM_API_KEY")
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -33,8 +35,16 @@ def tehran_now():
     return dt.datetime.now(dt.UTC) + dt.timedelta(hours=3)
 
 def from_txt_to_tehran(txt: str) -> dt.datetime:
+    """تبدیل متن زمان UTC به datetime تهران"""
     utc_naive = dt.datetime.strptime(txt, "%Y-%m-%d %H:%M:%S")
     return utc_naive + dt.timedelta(hours=3)
+
+def to_persian_date(gregorian_date: dt.date) -> str:
+    """تبدیل تاریخ میلادی به شمسی"""
+    jdate = jdatetime.date.fromgregorian(date=gregorian_date)
+    weekdays = ["شنبه", "یک‌شنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه"]  # اصلاح ترتیب روزها
+    weekday = weekdays[jdate.weekday()]  # اصلاح روش نمایش روز
+    return f"{weekday}، {jdate.year}/{jdate.month:02d}/{jdate.day:02d}"
 
 # =========================
 # 📐 توابع کمکی
@@ -56,13 +66,6 @@ def in_dir_range(deg: float, dmin: float, dmax: float) -> bool:
         return dmin <= d <= dmax
     return d >= dmin or d <= dmax
 
-def to_persian_date(gregorian_date: dt.date) -> str:
-    """تبدیل تاریخ میلادی به شمسی"""
-    jdate = jdatetime.date.fromgregorian(date=gregorian_date)
-    weekdays = ["دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه", "شنبه", "یک‌شنبه"]
-    weekday = weekdays[jdate.weekday()]
-    return f"{weekday}، {jdate.year}/{jdate.month:02d}/{jdate.day:02d}"
-
 # =========================
 # 🌬 دریافت داده‌ها از OpenWeatherMap
 # =========================
@@ -78,6 +81,7 @@ def fetch_forecast():
 # 🔍 تحلیل وضعیت پرواز
 # =========================
 def analyze_flight(speed: float, gust: float, deg: float) -> str:
+    """تحلیل فارسی شرایط پرواز با اعداد"""
     d = normalize_deg(deg)
     direction_fa = deg_to_direction(d)
     dir_ok = in_dir_range(d, GOOD_DIR_MIN, GOOD_DIR_MAX)
@@ -98,46 +102,41 @@ def analyze_flight(speed: float, gust: float, deg: float) -> str:
     return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) شرایط مرزی دارد. 🌬 سرعت {speed:.1f}، گاست {gust:.1f}"
 
 # =========================
-# 🧾 ساخت گزارش سه‌روزه
+# 🧾 ساخت گزارش یک‌روزه
 # =========================
 def build_report():
+    """ایجاد گزارش برای روز جاری"""
     data = fetch_forecast()
     now_teh = tehran_now()
     today = now_teh.date()
 
-    header = [
-        "🪂 گزارش باد سه‌روزه – سایت پروازی شهید بابایی قم",
-        "📍 بازه بررسی: ۱۵ تا ۱۸ تهران",
-        "🧭 جهت مطلوب: از شرق‌شمال‌شرقی تا جنوب‌شرقی (۷۰° تا ۱۳۰°)\n"
-    ]
-    lines = ["\n".join(header)]
+    lines = []
+    target_date = today
+    lines.append(f"\n🪂 گزارش باد – سایت پروازی شهید بابایی قم")
 
-    for d in range(3):
-        target_date = today + dt.timedelta(days=d)
-        persian_date = to_persian_date(target_date)
-        lines.append(f"\n📅 {persian_date}")
-        found = False
+    lines.append(f"\n📅 {to_persian_date(target_date)}")
 
-        for item in data["list"]:
-            t_txt = item["dt_txt"]
-            t_teh = from_txt_to_tehran(t_txt)
-            if t_teh.date() != target_date:
-                continue
-            if not (FLY_START_HOUR <= t_teh.hour <= FLY_END_HOUR):
-                continue
+    found = False
+    for item in data["list"]:
+        t_txt = item["dt_txt"]
+        t_teh = from_txt_to_tehran(t_txt)
+        if t_teh.date() != target_date:
+            continue
+        if not (FLY_START_HOUR <= t_teh.hour <= FLY_END_HOUR):
+            continue
 
-            wind = item.get("wind", {})
-            speed = float(wind.get("speed", 0.0))
-            gust = float(wind.get("gust", speed))
-            deg = float(wind.get("deg", 0.0))
+        wind = item.get("wind", {})
+        speed = float(wind.get("speed", 0.0))
+        gust = float(wind.get("gust", speed))
+        deg = float(wind.get("deg", 0.0))
 
-            status = analyze_flight(speed, gust, deg)
-            row = f"🕒 {t_teh.strftime('%H:%M')} → {status}"
-            lines.append(row)
-            found = True
+        status = analyze_flight(speed, gust, deg)
+        row = f"🕒 {t_teh.strftime('%H:%M')} → {status}"
+        lines.append(row)
+        found = True
 
-        if not found:
-            lines.append("⚠️ داده‌ای در بازه ۱۵ تا ۱۸ برای این روز موجود نیست.")
+    if not found:
+        lines.append("⚠️ داده‌ای در بازه ۱۵ تا ۱۸ برای امروز موجود نیست.")
 
     return "\n".join(lines)
 
@@ -145,6 +144,7 @@ def build_report():
 # 📩 ارسال گزارش به تلگرام
 # =========================
 def send_telegram(text: str):
+    """ارسال گزارش به تلگرام"""
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": text}
     try:
@@ -158,9 +158,11 @@ def send_telegram(text: str):
 # =========================
 def should_send_now():
     now = tehran_now()
-    return now.hour == 11 and now.minute < 10
+    # اکنون دقیقاً ساعت 11:00 باید چک بشه
+    return now.hour == 11 and now.minute == 0
 
 def main(run_anyway=False):
+    """اجرای اصلی برنامه"""
     if run_anyway or should_send_now():
         try:
             report = build_report()
@@ -172,5 +174,6 @@ def main(run_anyway=False):
         print(f"⏱️ هنوز زمان ارسال نیست ({tehran_now().strftime('%H:%M')} تهران)")
 
 if __name__ == "__main__":
+   # main(run_anyway=True)
     main()
-#main(run_anyway=True)
+
