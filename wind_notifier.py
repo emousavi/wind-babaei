@@ -15,10 +15,12 @@ FLY_END_HOUR = 18
 GOOD_DIR_MIN = 70.0
 GOOD_DIR_MAX = 130.0
 
-# ✅ محدوده‌ی سرعت باد (متر بر ثانیه)
-MIN_OK = 3.0
-MAX_OK = 6.0
-MAX_CAUTION = 8.0
+# ✅ محدوده‌ی سرعت باد برای پاراگلایدر (کیلومتر بر ساعت)
+MAX_OK = 22.0  # سرعت ایمن برای پرواز پاراگلایدر تا ۲۲ کیلومتر بر ساعت
+MAX_CAUTION = 25.0  # حداکثر سرعت باد که ممکن است خطرناک شود (۲۵ کیلومتر بر ساعت)
+
+# ✅ گاست باد تا ۳۰ کیلومتر بر ساعت
+MAX_GUST_OK = 30.0  # حداکثر سرعت گاست باد که برای پرواز مناسب است (۳۰ کیلومتر بر ساعت)
 
 # --------------------
 # بارگذاری متغیرها از .env
@@ -93,14 +95,12 @@ def analyze_flight(speed: float, gust: float, deg: float) -> str:
 
     if not dir_ok:
         return f"🚫 باد از سمت {direction_fa} ({int(d)}°) نامناسب برای پرواز است. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
-    if MIN_OK <= speed_kmh <= MAX_OK and gust_diff <= 2:
+    if speed_kmh <= MAX_OK and gust_diff <= 2 and gust_kmh <= MAX_GUST_OK:
         return f"✅ باد از سمت {direction_fa} ({int(d)}°) مناسب برای پرواز است. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
-    if MAX_OK < speed_kmh <= MAX_CAUTION and gust_diff <= 3:
+    if MAX_OK < speed_kmh <= MAX_CAUTION and gust_diff <= 3 and gust_kmh <= MAX_GUST_OK:
         return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) قابل پرواز ولی با احتیاط. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
-    if gust_diff > 2:
-        return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) دارای تلاطم (گاست زیاد) است. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
-    if speed_kmh < MIN_OK:
-        return f"❌ باد از سمت {direction_fa} ({int(d)}°) بسیار ضعیف است. 🌬 سرعت {speed_kmh:.1f} km/h"
+    if gust_kmh > MAX_GUST_OK:
+        return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) دارای گاست شدید است. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
     if speed_kmh > MAX_CAUTION:
         return f"🚫 باد از سمت {direction_fa} ({int(d)}°) بسیار شدید و خطرناک است. 🌬 سرعت {speed_kmh:.1f} km/h"
     return f"⚠️ باد از سمت {direction_fa} ({int(d)}°) شرایط مرزی دارد. 🌬 سرعت {speed_kmh:.1f} km/h، گاست {gust_kmh:.1f} km/h"
@@ -178,4 +178,4 @@ def main(run_anyway=False):
 
 if __name__ == "__main__":
    # main(run_anyway=True)
-    main()
+    main()  
