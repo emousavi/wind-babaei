@@ -1,30 +1,27 @@
-name: Daily Wind Report
+name: Run Wind Notifier Script Daily at 11 AM
 
 on:
   schedule:
-    # اجرای روزانه ساعت 07:30 UTC = 11:00 تهران
-    - cron: "30 7 * * *"
-  workflow_dispatch:  # اجرا دستی در صورت نیاز
+    # این بخش تنظیم می‌کنه که هر روز ساعت 11 صبح به وقت UTC (که معادل ساعت 14:30 تهران هست) اسکریپت اجرا بشه
+    - cron: '0 8 * * *'  # ساعت 11 به وقت ایران، معادل 8 صبح به وقت UTC
 
 jobs:
-  send_wind_report:
+  run_script:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
-          python-version: "3.11"
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
-          pip install requests python-dotenv jdatetime
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # اگر فایل requirements.txt دارید، پکیج‌ها نصب می‌شود
 
-      - name: Run wind notifier
-        env:
-          OWM_API_KEY: ${{ secrets.OWM_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Run wind_notifier.py script
         run: python wind_notifier.py
